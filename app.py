@@ -9,9 +9,9 @@ from airtable import Airtable
 app = Flask(__name__)
 
 AIRTABLE_API_KEY = 'patELEdV0LAx6Aba3.393bf0e41eb59b4b80de15b94a3d122eab50035c7c34189b53ec561de590dff3'
-OPEN_AI_API_KEY = 'sk-Gsh9z8UvGCcDoGAcW0mEIXh4Rb595l_fUWYBpoWz9UT3BlbkFJWUkB3EbbHdKAhsjxDUxqgT2FQ5gsu5PzsewMuA1B4A'
+OPEN_KEY = 'sk-Gsh9z8UvGCcDoGAcW0mEIXh4Rb595l_fUWYBpoWz9UT3BlbkFJWUkB3EbbHdKAhsjxDUxqgT2FQ5gsu5PzsewMuA1B4A'
 
-openai.api_key = OPEN_AI_API_KEY
+openai.api_key = OPEN_KEY
 
 api_key = AIRTABLE_API_KEY
 base_id = 'app5s8zl7DsUaDmtx'
