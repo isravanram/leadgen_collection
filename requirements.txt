@@ -1,0 +1,4 @@
+flask
+airtable
+pyairtable
+openai==0.28
