@@ -7,7 +7,6 @@ import openai
 from airtable import Airtable
 
 app = Flask(__name__)
-
 AIRTABLE_API_KEY = 'patELEdV0LAx6Aba3.393bf0e41eb59b4b80de15b94a3d122eab50035c7c34189b53ec561de590dff3'
 
 api_key = AIRTABLE_API_KEY
