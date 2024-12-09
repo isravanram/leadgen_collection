@@ -9,6 +9,9 @@ from airtable import Airtable
 app = Flask(__name__)
 
 AIRTABLE_API_KEY = 'patELEdV0LAx6Aba3.393bf0e41eb59b4b80de15b94a3d122eab50035c7c34189b53ec561de590dff3'
+OPEN_KEY = 'sk-Gsh9z8UvGCcDoGAcW0mEIXh4Rb595l_fUWYBpoWz9UT3BlbkFJWUkB3EbbHdKAhsjxDUxqgT2FQ5gsu5PzsewMuA1B4A'
+
+openai.api_key = OPEN_KEY
 
 api_key = AIRTABLE_API_KEY
 base_id = 'app5s8zl7DsUaDmtx'
@@ -81,7 +84,18 @@ def people_search(page_number,results_per_page):
               data = enrichment_api_response.json()
               # print(data)
               data=data['person']
-             
+              print(data['employment_history'])
+              response = openai.ChatCompletion.create(
+              model="gpt-3.5-turbo",  # or "gpt-4" for more advanced results
+              messages=[
+                  {"role": "system", "content": "You are an expert at text summarization."},
+                  {"role": "user", "content": f"Please shorten this description: {data['employment_history']}"}
+              ],
+              max_tokens=100  # Adjust based on the desired length of the output
+              )
+
+              employment_summary = response['choices'][0]['message']['content']
+              
               data_dict = {
                   'id': data['id'],
                   'first_name': data['first_name'],
@@ -99,7 +113,7 @@ def people_search(page_number,results_per_page):
                   'github_url': data['github_url'],
                   'facebook_url': data['facebook_url'],
                   'employment_history': str(data['employment_history']),
-                  'employment_summary':'demo',
+                  'employment_summary':str(employment_summary),
                   'organization_name': data['organization']['name'],
                   'organization_website': data['organization']['website_url'],
                   'organization_linkedin': data['organization']['linkedin_url'],
