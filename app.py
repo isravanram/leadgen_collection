@@ -9,6 +9,7 @@ from airtable import Airtable
 
 app = Flask(__name__)
 
+#keys
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
