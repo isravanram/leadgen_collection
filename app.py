@@ -20,6 +20,12 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 APOLLO_API_KEY = os.getenv("APOLLO_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
+print(f"AIRTABLE_API_KEY: {AIRTABLE_API_KEY}")
+print(f"OPENAI_API_KEY: {OPENAI_API_KEY}")
+print(f"APOLLO_API_KEY: {APOLLO_API_KEY}")
+print(f"AIRTABLE_BASE_ID: {AIRTABLE_BASE_ID}")
+print(f"AIRTABLE_TABLE_NAME: {AIRTABLE_TABLE_NAME}")
+
 print(f"\n------------ Successfully retrieved the Secret keys ------------")
 
 
@@ -180,9 +186,11 @@ def test_connection(page_number, results_per_page):
         data = response.json()
         # Process the data
         print('Successfully accessed people search API')
+        return True
     else:
         print(f"Error: {response.status_code}, People Search API failed")
-
+    return False
+    
 @app.route("/testing", methods=["GET"])
 def testing():
     print('-----------Sample Testing Module------')
