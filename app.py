@@ -7,19 +7,24 @@ import requests
 import openai
 from airtable import Airtable
 from pyairtable import Api  # Updated import for Api class
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
-
+print(f"\n------------ Generate : Data Collection ------------")
+print('Initializing Flask app')
 app = Flask(__name__)
 
+print(f"\n------------ Retrieving the Secret keys ------------")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 APOLLO_API_KEY = os.getenv("APOLLO_API_KEY")
-
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
+print(f"\n------------ Successfully retrieved the Secret keys ------------")
 
 
 def export_to_airtable(table_object,data):
+    print(f"\n------------Exporting results to Airtable ------------")
     response = table_object.create(data)
     # Check if the insertion was successful
     if 'id' in response:
@@ -30,7 +35,10 @@ def export_to_airtable(table_object,data):
 def people_enrichment(apollo_id):
     print(f"\n------------Started People Enrichment API------------")
     url = f"https://api.apollo.io/api/v1/people/match?id={apollo_id}&reveal_personal_emails=false&reveal_phone_number=false"
-
+    proxies = {
+        'http': None,
+        'https': None
+    }
     headers = {
         "accept": "application/json",
         "Cache-Control": "no-cache",
@@ -38,15 +46,20 @@ def people_enrichment(apollo_id):
         "x-api-key": APOLLO_API_KEY
     }
 
-    response = requests.post(url, headers=headers)
+    # response = requests.post(url, headers=headers)
+    response = requests.post(url, headers=headers, proxies=proxies)
     print(response.json())
     print(f"------------Completed People Enrichment API------------")
     return response
 
 
 def people_search(page_number,results_per_page):
+  print(f"\n------------Started People Search API ------------")
   url = f"https://api.apollo.io/api/v1/mixed_people/search?person_titles[]=marketing%20manager&person_titles[]=marketing%20director&person_locations[]=Dubai%2C%20United%20Arab%20Emirates&person_seniorities[]=ceo&person_seniorities[]=cmo&person_seniorities[]=director&organization_locations[]=Dubai%2C%20United%20Arab%20Emirates&contact_email_status[]=verified&contact_email_status[]=likely%20to%20engage&organization_num_employees_ranges[]=1%2C10&organization_num_employees_ranges[]=11%2C20&organization_num_employees_ranges[]=21%2C50&page={page_number}&per_page={results_per_page}"
-
+  proxies = {
+        'http': None,
+        'https': None
+  }
   headers = {
       "accept": "application/json",
       "Cache-Control": "no-cache",
@@ -54,11 +67,13 @@ def people_search(page_number,results_per_page):
       "x-api-key": "cHfCHoGRt798OuSynPZ7Mg"
   }
 
-  response = requests.post(url, headers=headers)
+#   response = requests.post(url, headers=headers)
+  response = requests.post(url, headers=headers, proxies=proxies)
   api = Api(AIRTABLE_API_KEY)
   airtable_obj = api.table(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
 
   if response.status_code == 200:
+      print(f"\n------------ People Search API completed successfully ------------")
       data = response.json()
       for contact in data['people']:
           apollo_id = contact['id']
@@ -133,13 +148,49 @@ def people_search(page_number,results_per_page):
               return False
       return True  
   else:
-      print("People Search API failed.")
+      print(f"\n------------ ERROR : People Search API Failed ------------")
       return False
 
+def test_connection(page_number, results_per_page):
+    print('-----Starting the testing setup-----')
+    url = f"https://api.apollo.io/api/v1/mixed_people/search?page={page_number}&per_page={results_per_page}"
+    headers = {
+        "accept": "application/json",
+        "Cache-Control": "no-cache",
+        "Content-Type": "application/json",
+        "x-api-key": "ti7hoaAD9sOc5DGzqZUk-Q"
+    }
 
-# @app.route("/enrich_people")
-@app.route("/", methods=["GET"])
+    # Disable proxy for this request
+    proxies = {
+        'http': None,
+        'https': None
+    }
+
+    # Use a session with retry mechanism
+    session = requests.Session()
+    retry = Retry(connect=3, backoff_factor=0.5)
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+
+    response = session.post(url, headers=headers, proxies=proxies)
+
+    if response.status_code == 200:
+        data = response.json()
+        # Process the data
+        print('Successfully accessed people search API')
+    else:
+        print(f"Error: {response.status_code}, People Search API failed")
+
+@app.route("/testing", methods=["GET"])
+def testing():
+    print('-----------Sample Testing Module------')
+    return 'Testing Successful for endpoint /testing'
+
+@app.route("/apollo_check", methods=["GET"])
 def execute_collection():
+  print(f"\n------------ Started Data Collection ------------")  
   page_number = 10
   results_per_page = 1
 #   job_titles = []
@@ -147,7 +198,8 @@ def execute_collection():
 #   organization_num_employees_ranges = [1,10]
 #   seniority = []
 #   email_type = []
-  success_status = people_search(page_number,results_per_page)
+#   success_status = people_search(page_number,results_per_page)
+  success_status = test_connection(page_number,results_per_page)
   return 'Successfully collected the data' if success_status else 'Failed retrieving information from Apollo.'
 
 if __name__ == '__main__':
