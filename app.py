@@ -137,7 +137,8 @@ def people_search(page_number,results_per_page):
       return False
 
 
-@app.route("/enrich_people")
+# @app.route("/enrich_people")
+@app.route("/", methods=["GET"])
 def execute_collection():
   page_number = 10
   results_per_page = 1
