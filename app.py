@@ -179,8 +179,9 @@ def test_connection(page_number, results_per_page):
     adapter = HTTPAdapter(max_retries=retry)
     session.mount('http://', adapter)
     session.mount('https://', adapter)
-
+    print('Sending post request for People search API testing.......')
     response = session.post(url, headers=headers, proxies=proxies)
+    print(f'Completed request....... Response : {response}')
 
     if response.status_code == 200:
         data = response.json()
@@ -190,7 +191,7 @@ def test_connection(page_number, results_per_page):
     else:
         print(f"Error: {response.status_code}, People Search API failed")
     return False
-    
+
 @app.route("/testing", methods=["GET"])
 def testing():
     print('-----------Sample Testing Module------')
