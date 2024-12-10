@@ -6,6 +6,8 @@ from pyairtable import Table
 import requests
 import openai
 from airtable import Airtable
+from pyairtable import Api  # Updated import for Api class
+
 
 app = Flask(__name__)
 
@@ -15,7 +17,7 @@ APOLLO_API_KEY = os.getenv("APOLLO_API_KEY")
 
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
-table_object = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
+
 
 def export_to_airtable(table_object,data):
     response = table_object.create(data)
@@ -27,7 +29,7 @@ def export_to_airtable(table_object,data):
 
 def people_enrichment(apollo_id):
     print(f"\n------------Started People Enrichment API------------")
-    url = f"https://api.apollo.io/api/v1/mixed_people/search?person_titles[]=marketing%20manager&person_titles[]=marketing%20director&person_locations[]=Dubai%2C%20United%20Arab%20Emirates&person_seniorities[]=ceo&person_seniorities[]=cmo&person_seniorities[]=director&organization_locations[]=Dubai%2C%20United%20Arab%20Emirates&contact_email_status[]=verified&contact_email_status[]=likely%20to%20engage&organization_num_employees_ranges[]=1%2C10&organization_num_employees_ranges[]=11%2C20&organization_num_employees_ranges[]=21%2C50&page={page_number}&per_page={results_per_page}"
+    url = f"https://api.apollo.io/api/v1/people/match?id={apollo_id}&reveal_personal_emails=false&reveal_phone_number=false"
 
     headers = {
         "accept": "application/json",
@@ -43,7 +45,7 @@ def people_enrichment(apollo_id):
 
 
 def people_search(page_number,results_per_page):
-  url = f"https://api.apollo.io/api/v1/mixed_people/search?page={page_number}&per_page={results_per_page}"
+  url = f"https://api.apollo.io/api/v1/mixed_people/search?person_titles[]=marketing%20manager&person_titles[]=marketing%20director&person_locations[]=Dubai%2C%20United%20Arab%20Emirates&person_seniorities[]=ceo&person_seniorities[]=cmo&person_seniorities[]=director&organization_locations[]=Dubai%2C%20United%20Arab%20Emirates&contact_email_status[]=verified&contact_email_status[]=likely%20to%20engage&organization_num_employees_ranges[]=1%2C10&organization_num_employees_ranges[]=11%2C20&organization_num_employees_ranges[]=21%2C50&page={page_number}&per_page={results_per_page}"
 
   headers = {
       "accept": "application/json",
@@ -53,7 +55,8 @@ def people_search(page_number,results_per_page):
   }
 
   response = requests.post(url, headers=headers)
-  airtable_obj = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
+  api = Api(AIRTABLE_API_KEY)
+  airtable_obj = api.table(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
 
   if response.status_code == 200:
       data = response.json()
@@ -136,8 +139,8 @@ def people_search(page_number,results_per_page):
 
 @app.route("/enrich_people")
 def execute_collection():
-  page_number = 2
-  results_per_page = 2
+  page_number = 10
+  results_per_page = 1
 #   job_titles = []
 #   locations = []
 #   organization_num_employees_ranges = [1,10]
