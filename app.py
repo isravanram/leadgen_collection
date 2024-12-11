@@ -15,11 +15,6 @@ print('Initializing Flask app')
 app = Flask(__name__)
 
 print(f"\n------------ Retrieving the Secret keys ------------")
-# AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
-# OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-# APOLLO_API_KEY = os.getenv("APOLLO_API_KEY")
-# AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
-# AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 
 AIRTABLE_API_KEY = os.environ.get('AIRTABLE_API_KEY')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
@@ -34,7 +29,6 @@ print(f"AIRTABLE_BASE_ID: {AIRTABLE_BASE_ID}")
 print(f"AIRTABLE_TABLE_NAME: {AIRTABLE_TABLE_NAME}")
 
 print(f"\n------------ Successfully retrieved the Secret keys ------------")
-
 
 def export_to_airtable(table_object,data):
     print(f"\n------------Exporting results to Airtable ------------")
@@ -65,14 +59,12 @@ def people_enrichment(apollo_id):
     print(f"------------Completed People Enrichment API------------")
     return response
 
-
-def people_search(page_number,results_per_page):
+def people_search(query_params):
   print(f"\n------------Started People Search API ------------")
-  url = f"https://api.apollo.io/api/v1/mixed_people/search?person_titles[]=marketing%20manager&person_titles[]=marketing%20director&person_locations[]=Dubai%2C%20United%20Arab%20Emirates&person_seniorities[]=ceo&person_seniorities[]=cmo&person_seniorities[]=director&organization_locations[]=Dubai%2C%20United%20Arab%20Emirates&contact_email_status[]=verified&contact_email_status[]=likely%20to%20engage&organization_num_employees_ranges[]=1%2C10&organization_num_employees_ranges[]=11%2C20&organization_num_employees_ranges[]=21%2C50&page={page_number}&per_page={results_per_page}"
-  proxies = {
-        'http': None,
-        'https': None
-  }
+  base_url = "https://api.apollo.io/api/v1/mixed_people/search"
+  url = f"{base_url}?{'&'.join(query_params)}"
+#   url = f"https://api.apollo.io/api/v1/mixed_people/search?person_titles[]=marketing%20manager&person_titles[]=marketing%20director&person_locations[]=Dubai%2C%20United%20Arab%20Emirates&person_seniorities[]=ceo&person_seniorities[]=cmo&person_seniorities[]=director&organization_locations[]=Dubai%2C%20United%20Arab%20Emirates&contact_email_status[]=verified&contact_email_status[]=likely%20to%20engage&organization_num_employees_ranges[]=1%2C10&organization_num_employees_ranges[]=11%2C20&organization_num_employees_ranges[]=21%2C50&page={page_number}&per_page={results_per_page}"
+  
   headers = {
       "accept": "application/json",
       "Cache-Control": "no-cache",
@@ -80,8 +72,7 @@ def people_search(page_number,results_per_page):
       "x-api-key": "cHfCHoGRt798OuSynPZ7Mg"
   }
 
-#   response = requests.post(url, headers=headers)
-  response = requests.post(url, headers=headers, proxies=proxies)
+  response = requests.post(url, headers=headers)
   api = Api(AIRTABLE_API_KEY)
   airtable_obj = api.table(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
 
@@ -96,7 +87,6 @@ def people_search(page_number,results_per_page):
     
           # Retrieve all records from the table
           records = airtable_obj.all()
-        #   print(f'records : {records}')
 
           # Filter out the records where the value in the column matches the value to omit
           record_exists = any(record['fields'].get(column_name) == unique_value for record in records)    
@@ -155,6 +145,7 @@ def people_search(page_number,results_per_page):
               }
 
               export_to_airtable(airtable_obj,data_dict)
+              
               print('~~~~~~~~~People enrichment successful~~~~~~~~~~~~')
           else:
               print(f"Error: {enrichment_api_response.status_code}, People Enrichment API failed")
@@ -201,21 +192,50 @@ def test_connection(page_number, results_per_page):
 
 @app.route("/testing", methods=["GET"])
 def testing():
+    print('-------Started Testing --------------')
+    job_titles = request.args.get('job_titles', default=[], type=list)
+    person_seniorities = request.args.get('person_seniorities', default=[], type=list)
+    person_locations = request.args.get('person_locations', default=[], type=list)
+    organization_locations = request.args.get('organization_locations', default=[], type=list)
+    email_status = request.args.get('email_status', default=[], type=list)
+    organization_num_employees_ranges = request.args.get('organization_num_employees_ranges', default=[], type=list)
+    page_number = request.args.get('page', default=1, type=int)
+    results_per_page = request.args.get('per_page', default=1, type=int)
     print('-----------Sample Testing Module------')
-    return 'Testing Successful for endpoint /testing'
+    x =  {"job_titles": {job_titles}, "person_seniorities": {person_seniorities}, "person_locations": {person_locations}, "organization_locations": {organization_locations}, "email_status": {email_status}, "organization_num_employees_ranges": {organization_num_employees_ranges}, "page_number": {page_number}, "Per page": {results_per_page}}
+    print(x)
+    return {"job_titles": {job_titles}, "person_seniorities": {person_seniorities}, "person_locations": {person_locations}, "organization_locations": {organization_locations}, "email_status": {email_status}, "organization_num_employees_ranges": {organization_num_employees_ranges}, "page_number": {page_number}, "Per page": {results_per_page}}
+
+def construct_query_param(key, values):
+    return "&".join([f"{key}[]={value.replace(' ', '%20')}" for value in values])
 
 @app.route("/apollo_check", methods=["GET"])
 def execute_collection():
   print(f"\n------------ Started Data Collection ------------")  
-  page_number = 10
-  results_per_page = 1
-#   job_titles = []
-#   locations = []
-#   organization_num_employees_ranges = [1,10]
-#   seniority = []
-#   email_type = []
-#   success_status = people_search(page_number,results_per_page)
-  success_status = test_connection(page_number,results_per_page)
+  job_titles = ["marketing manager", "marketing director"]
+  person_seniorities = ["ceo", "cmo", "director"]
+  person_locations = ["Dubai, United Arab Emirates"]
+  organization_locations = ["Dubai, United Arab Emirates"]
+  email_status = ["verified", "likely to engage"]
+  organization_num_employees_ranges = ["1,10", "11,20", "21,50"]
+  page_number = 2
+  results_per_page = 10
+
+  # Construct the query string dynamically
+  query_params = [
+      construct_query_param("person_titles", job_titles),
+      construct_query_param("person_seniorities", person_seniorities),
+      construct_query_param("person_locations", person_locations),
+      construct_query_param("organization_locations", organization_locations),
+      construct_query_param("contact_email_status", email_status),
+      construct_query_param("organization_num_employees_ranges", organization_num_employees_ranges),
+  ]
+
+  # Add pagination parameters
+  query_params.append(f"page={page_number}")
+  query_params.append(f"per_page={results_per_page}")
+  success_status = people_search(query_params)
+#   success_status = test_connection(page_number,results_per_page)
   return 'Successfully collected the data' if success_status else 'Failed retrieving information from Apollo.'
 
 if __name__ == '__main__':

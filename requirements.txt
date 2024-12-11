@@ -3,3 +3,4 @@ airtable
 pyairtable
 openai==0.28
 urllib3
+streamlit
