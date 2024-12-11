@@ -16,11 +16,17 @@ app = Flask(__name__)
 
 print(f"\n------------ Retrieving the Secret keys ------------")
 
-AIRTABLE_API_KEY = os.environ.get('AIRTABLE_API_KEY')
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
-APOLLO_API_KEY = os.environ.get('APOLLO_API_KEY')
-AIRTABLE_BASE_ID = os.environ.get('AIRTABLE_BASE_ID')
-AIRTABLE_TABLE_NAME = os.environ.get('AIRTABLE_TABLE_NAME')
+# AIRTABLE_API_KEY = os.environ.get('AIRTABLE_API_KEY')
+# OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+# APOLLO_API_KEY = os.environ.get('APOLLO_API_KEY')
+# AIRTABLE_BASE_ID = os.environ.get('AIRTABLE_BASE_ID')
+# AIRTABLE_TABLE_NAME = os.environ.get('AIRTABLE_TABLE_NAME')
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
+AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
+AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
+APOLLO_API_KEY = os.getenv("APOLLO_API_KEY")
 
 print(f"AIRTABLE_API_KEY: {AIRTABLE_API_KEY}")
 print(f"OPENAI_API_KEY: {OPENAI_API_KEY}")
