@@ -206,8 +206,8 @@ def testing_input():
     organization_locations = request.args.get('organization_locations', default='', type=str)
     email_status = request.args.get('email_status', default='', type=str)
     organization_num_employees_ranges = request.args.get('organization_num_employees_ranges', default='', type=str)
-    page_number = int(request.args.get('page', default='', type=str))
-    results_per_page = int(request.args.get('per_page', default='', type=str))
+    page_number = int(request.args.get('page', default='1', type=str))
+    results_per_page = int(request.args.get('per_page', default='1', type=str))
     x =  {"job_titles": job_titles, "person_seniorities": person_seniorities, "person_locations": person_locations, "organization_locations": organization_locations, "email_status": email_status, "organization_num_employees_ranges": organization_num_employees_ranges, "page_number": page_number, "Per page": results_per_page}
     print(f"Collected data : {x}")
     job_titles = job_titles.split(',')
@@ -244,8 +244,8 @@ def execute_collection():
   organization_locations = request.args.get('organization_locations', default='', type=str)
   email_status = request.args.get('email_status', default='', type=str)
   organization_num_employees_ranges = request.args.get('organization_num_employees_ranges', default='', type=str)
-  page_number = int(request.args.get('page', default='', type=str))
-  results_per_page = int(request.args.get('per_page', default='', type=str))
+  page_number = int(request.args.get('page', default='1', type=str))
+  results_per_page = int(request.args.get('per_page', default='1', type=str))
   x =  {"job_titles": job_titles, "person_seniorities": person_seniorities, "person_locations": person_locations, "organization_locations": organization_locations, "email_status": email_status, "organization_num_employees_ranges": organization_num_employees_ranges, "page_number": page_number, "Per page": results_per_page}
   print(f"Collected data : {x}")
   job_titles = job_titles.split(',')
@@ -254,9 +254,10 @@ def execute_collection():
   organization_locations = [location for location in organization_locations.strip("[]").split("],[")]
   email_status = email_status.split(',')
   organization_num_employees_ranges=[value for value in organization_num_employees_ranges.strip('[]').split('],[')]
-    
+  print('\n\n') 
   x =  {"job_titles": job_titles, "person_seniorities": person_seniorities, "person_locations": person_locations, "organization_locations": organization_locations, "email_status": email_status, "organization_num_employees_ranges": organization_num_employees_ranges, "page_number": page_number, "Per page": results_per_page}
-  print(x)
+  print(f"Sanitized data : {x}")
+  print('\n\n') 
   query_params = [
       construct_query_param("person_titles", job_titles),
       construct_query_param("person_seniorities", person_seniorities),
