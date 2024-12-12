@@ -16,12 +16,6 @@ app = Flask(__name__)
 
 print(f"\n------------ Retrieving the Secret keys ------------")
 
-# AIRTABLE_API_KEY = os.environ.get('AIRTABLE_API_KEY')
-# OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
-# APOLLO_API_KEY = os.environ.get('APOLLO_API_KEY')
-# AIRTABLE_BASE_ID = os.environ.get('AIRTABLE_BASE_ID')
-# AIRTABLE_TABLE_NAME = os.environ.get('AIRTABLE_TABLE_NAME')
-
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
@@ -196,21 +190,37 @@ def test_connection(page_number, results_per_page):
         print(f"Error: {response.status_code}, People Search API failed")
     return False
 
-@app.route("/testing", methods=["GET"])
-def testing():
+@app.route("/testing_connection", methods=["GET"])
+def testing_connection():
     print('-------Started Testing --------------')
-    job_titles = request.args.get('job_titles', default=[], type=list)
-    person_seniorities = request.args.get('person_seniorities', default=[], type=list)
-    person_locations = request.args.get('person_locations', default=[], type=list)
-    organization_locations = request.args.get('organization_locations', default=[], type=list)
-    email_status = request.args.get('email_status', default=[], type=list)
-    organization_num_employees_ranges = request.args.get('organization_num_employees_ranges', default=[], type=list)
-    page_number = request.args.get('page', default=1, type=int)
-    results_per_page = request.args.get('per_page', default=1, type=int)
-    print('-----------Sample Testing Module------')
-    x =  {"job_titles": {job_titles}, "person_seniorities": {person_seniorities}, "person_locations": {person_locations}, "organization_locations": {organization_locations}, "email_status": {email_status}, "organization_num_employees_ranges": {organization_num_employees_ranges}, "page_number": {page_number}, "Per page": {results_per_page}}
+    job_titles = request.args.get('job_titles', default='', type=str)
+    print((job_titles))
+    return {'Status':'Success'}
+
+@app.route("/testing_input", methods=["GET"])
+def testing_input():
+    print('-------Started Testing --------------')
+    job_titles = request.args.get('job_titles', default='', type=str)
+    person_seniorities = request.args.get('person_seniorities', default='', type=str)
+    person_locations = request.args.get('person_locations', default='', type=str)
+    organization_locations = request.args.get('organization_locations', default='', type=str)
+    email_status = request.args.get('email_status', default='', type=str)
+    organization_num_employees_ranges = request.args.get('organization_num_employees_ranges', default='', type=str)
+    page_number = int(request.args.get('page', default='', type=str))
+    results_per_page = int(request.args.get('per_page', default='', type=str))
+    x =  {"job_titles": job_titles, "person_seniorities": person_seniorities, "person_locations": person_locations, "organization_locations": organization_locations, "email_status": email_status, "organization_num_employees_ranges": organization_num_employees_ranges, "page_number": page_number, "Per page": results_per_page}
+    print(f"Collected data : {x}")
+    job_titles = job_titles.split(',')
+    person_seniorities = person_seniorities.split(',')
+    person_locations = [location for location in person_locations.strip("[]").split("],[")]
+    organization_locations = [location for location in organization_locations.strip("[]").split("],[")]
+    email_status = email_status.split(',')
+    organization_num_employees_ranges=[value for value in organization_num_employees_ranges.strip('[]').split('],[')]
+    
+    print('-----------Completed Testing Module------')
+    x =  {"job_titles": job_titles, "person_seniorities": person_seniorities, "person_locations": person_locations, "organization_locations": organization_locations, "email_status": email_status, "organization_num_employees_ranges": organization_num_employees_ranges, "page_number": page_number, "Per page": results_per_page}
     print(x)
-    return {"job_titles": {job_titles}, "person_seniorities": {person_seniorities}, "person_locations": {person_locations}, "organization_locations": {organization_locations}, "email_status": {email_status}, "organization_num_employees_ranges": {organization_num_employees_ranges}, "page_number": {page_number}, "Per page": {results_per_page}}
+    return x
 
 def construct_query_param(key, values):
     return "&".join([f"{key}[]={value.replace(' ', '%20')}" for value in values])
@@ -218,16 +228,35 @@ def construct_query_param(key, values):
 @app.route("/apollo_check", methods=["GET"])
 def execute_collection():
   print(f"\n------------ Started Data Collection ------------")  
-  job_titles = ["marketing manager", "marketing director"]
-  person_seniorities = ["ceo", "cmo", "director"]
-  person_locations = ["Dubai, United Arab Emirates"]
-  organization_locations = ["Dubai, United Arab Emirates"]
-  email_status = ["verified", "likely to engage"]
-  organization_num_employees_ranges = ["1,10", "11,20", "21,50"]
-  page_number = 2
-  results_per_page = 10
-
+#   job_titles = ["marketing manager", "marketing director"]
+#   person_seniorities = ["ceo", "cmo", "director"]
+#   person_locations = ["Dubai, United Arab Emirates"]
+#   organization_locations = ["Dubai, United Arab Emirates"]
+#   email_status = ["verified", "likely to engage"]
+#   organization_num_employees_ranges = ["1,10", "11,20", "21,50"]
+#   page_number = 2
+#   results_per_page = 10
+  
   # Construct the query string dynamically
+  job_titles = request.args.get('job_titles', default='', type=str)
+  person_seniorities = request.args.get('person_seniorities', default='', type=str)
+  person_locations = request.args.get('person_locations', default='', type=str)
+  organization_locations = request.args.get('organization_locations', default='', type=str)
+  email_status = request.args.get('email_status', default='', type=str)
+  organization_num_employees_ranges = request.args.get('organization_num_employees_ranges', default='', type=str)
+  page_number = int(request.args.get('page', default='', type=str))
+  results_per_page = int(request.args.get('per_page', default='', type=str))
+  x =  {"job_titles": job_titles, "person_seniorities": person_seniorities, "person_locations": person_locations, "organization_locations": organization_locations, "email_status": email_status, "organization_num_employees_ranges": organization_num_employees_ranges, "page_number": page_number, "Per page": results_per_page}
+  print(f"Collected data : {x}")
+  job_titles = job_titles.split(',')
+  person_seniorities = person_seniorities.split(',')
+  person_locations = [location for location in person_locations.strip("[]").split("],[")]
+  organization_locations = [location for location in organization_locations.strip("[]").split("],[")]
+  email_status = email_status.split(',')
+  organization_num_employees_ranges=[value for value in organization_num_employees_ranges.strip('[]').split('],[')]
+    
+  x =  {"job_titles": job_titles, "person_seniorities": person_seniorities, "person_locations": person_locations, "organization_locations": organization_locations, "email_status": email_status, "organization_num_employees_ranges": organization_num_employees_ranges, "page_number": page_number, "Per page": results_per_page}
+  print(x)
   query_params = [
       construct_query_param("person_titles", job_titles),
       construct_query_param("person_seniorities", person_seniorities),
@@ -237,11 +266,9 @@ def execute_collection():
       construct_query_param("organization_num_employees_ranges", organization_num_employees_ranges),
   ]
 
-  # Add pagination parameters
   query_params.append(f"page={page_number}")
   query_params.append(f"per_page={results_per_page}")
   success_status = people_search(query_params)
-#   success_status = test_connection(page_number,results_per_page)
   return 'Successfully collected the data' if success_status else 'Failed retrieving information from Apollo.'
 
 if __name__ == '__main__':
