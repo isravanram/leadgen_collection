@@ -145,11 +145,16 @@ def people_search(query_params):
               }
 
               export_to_airtable(airtable_obj,data_dict)
-              
               print('~~~~~~~~~People enrichment successful~~~~~~~~~~~~')
           else:
               print(f"Error: {enrichment_api_response.status_code}, People Enrichment API failed")
               return False
+      print('\n========= Completed Data Collection, Starting Data Cleaning... ===========\n')
+      response = requests.get(
+            f"https://taipa.pythonanywhere.com/"
+        )
+      print("---------Data Cleaning completed successfully-----")
+      print(response)
       return True  
   else:
       print(f"\n------------ ERROR : People Search API Failed ------------")
@@ -199,7 +204,7 @@ def testing_connection():
 
 @app.route("/testing_input", methods=["GET"])
 def testing_input():
-    print('-------Started Testing --------------')
+    print('------- Input data check --------------')
     job_titles = request.args.get('job_titles', default='', type=str)
     person_seniorities = request.args.get('person_seniorities', default='', type=str)
     person_locations = request.args.get('person_locations', default='', type=str)
@@ -216,10 +221,9 @@ def testing_input():
     organization_locations = [location for location in organization_locations.strip("[]").split("],[")]
     email_status = email_status.split(',')
     organization_num_employees_ranges=[value for value in organization_num_employees_ranges.strip('[]').split('],[')]
-    
-    print('-----------Completed Testing Module------')
     x =  {"job_titles": job_titles, "person_seniorities": person_seniorities, "person_locations": person_locations, "organization_locations": organization_locations, "email_status": email_status, "organization_num_employees_ranges": organization_num_employees_ranges, "page_number": page_number, "Per page": results_per_page}
-    print(x)
+    print(f"Sanitized data : {x}")
+
     return x
 
 def construct_query_param(key, values):
