@@ -3,8 +3,6 @@ from airtable import Airtable
 import pandas as pd
 import numpy as np
 import os
-import matplotlib.pyplot as plt
-import seaborn as sns
 import re
 # import requests  # Import the external 'requests' library
 
