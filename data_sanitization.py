@@ -3,7 +3,6 @@ from airtable import Airtable
 import pandas as pd
 import numpy as np
 import os
-import pycountry
 import matplotlib.pyplot as plt
 import seaborn as sns
 import re
