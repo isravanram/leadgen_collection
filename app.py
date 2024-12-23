@@ -9,7 +9,7 @@ import requests
 import openai
 import sys
 
-from data_sanitization import fetch_and_update_data
+from data_sanitization import fetch_and_update_data,test_sanitization_connection
 
 print(f"\n=============== Generate : Data Ingestion  ===============")
 print('Starting the app')
@@ -87,7 +87,6 @@ def unique_key_check_airtable(column_name,unique_value):
 def parse_people_info(data):
     try:
         print('----------Parsing the data input --------------]')
-        # print(data)
         employment_history = data['employment_history']
         response = openai.ChatCompletion.create(
                         model="gpt-3.5-turbo",  # or "gpt-4" for more advanced results
@@ -280,6 +279,7 @@ def people_search(query_params,client_id):
         print(f"Total profiles enriched: {enriched_profiles}")
         print(f"Total profiles uploaded: {selected_profiles}")
         # response = requests.get(DATA_CLEANING_URL)
+        # test_sanitization_connection()
         response=fetch_and_update_data()
         print(response)
         print('\n------------ Data Cleaning Completed: Data Ready for Outreach ------------\n')
@@ -306,7 +306,8 @@ def construct_query_param(key, values):
 @app.route("/data_sanitization", methods=["GET"])
 def initialize_data_sanitization():
     try:
-        fetch_and_update_data()
+        response = fetch_and_update_data()
+        return response
     except Exception as e:
         execute_error_block(f"Error occured while initializing data sanitization module {e}")
 
@@ -314,7 +315,6 @@ def initialize_data_sanitization():
 def execute_collection():
   try:
     print(f"\n------------ Started Data Collection ------------")  
-    
     # Construct the query string dynamically
     job_titles = request.args.get('job_titles', default='', type=str)
     person_seniorities = request.args.get('person_seniorities', default='', type=str)
@@ -351,7 +351,6 @@ def execute_collection():
     return 'Successfully collected the data' if success_status else 'Failed retrieving information from Apollo.'
   except Exception as e:
     execute_error_block(f"Error occured while parsing the input. {e}")
-
 
 if __name__ == '__main__':
   app.run(debug=True)
