@@ -9,7 +9,7 @@ import requests
 import openai
 import sys
 
-from data_sanitization import fetch_and_update_data,test_sanitization_connection
+from data_sanitization import fetch_and_update_data
 
 print(f"\n=============== Generate : Data Ingestion  ===============")
 print('Starting the app')
