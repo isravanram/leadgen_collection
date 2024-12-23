@@ -193,6 +193,9 @@ def fetch_client_details(df, airtable_instance, icp_field="associated_client_id"
 @app.route("/", methods=["GET"])
 def fetch_and_update_data():
     try:
+        print(f"BASE_ID_OLD : {BASE_ID_OLD}")
+        print(f"TABLE_NAME_OLD : {TABLE_NAME_OLD}")
+        print(f"API_KEY : {API_KEY}")
         all_records = airtable_old.get_all()
 
         data = [record.get('fields', {}) for record in all_records]
@@ -365,7 +368,8 @@ def fetch_and_update_data():
             "color_scheme" : "color_scheme",
             "font_style" : "font_style",
             "instantly_campaign_id" : "instantly_campaign_id",
-            "business_type" : "business_type"
+            "business_type" : "business_type",
+            "outreach_table" : "outreach_table"
 
         }
 
