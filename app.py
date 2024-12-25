@@ -352,7 +352,6 @@ def qualify_lead(persona_details,solution_benefits,unique_features,solution_impa
     except Exception as e:
         execute_error_block(f"Error occured while qualifying the lead. {e}")
 
-
 def people_enrichment(apollo_id):
     try:
         print(f"\n------------Started Persona Data Enrichment------------")
@@ -501,6 +500,10 @@ def initialize_data_sanitization():
 
 def test_run_pipeline(test_run_id,client_id):
     try:
+        record_exists = unique_key_check_airtable(column_name='id',unique_value=test_run_id)
+        if not record_exists:
+            print(f'Record with the following id: {apollo_id} already exists. Skipping the entry...')
+            return True
         enrichment_api_response = people_enrichment(test_run_id)
         if enrichment_api_response.status_code == 200:
             data = enrichment_api_response.json()
