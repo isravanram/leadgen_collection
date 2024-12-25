@@ -1,11 +1,9 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request 
 from airtable import Airtable
 import pandas as pd
 import numpy as np
 import os
 import re
-# import requests  # Import the external 'requests' library
-
 
 app = Flask(__name__)
 
@@ -15,16 +13,12 @@ API_KEY = 'patELEdV0LAx6Aba3.393bf0e41eb59b4b80de15b94a3d122eab50035c7c34189b53e
 TABLE_NAME_OLD = 'profiles_raw'
 
 # New Airtable Configuration
-# BASE_ID_NEW1 = 'appTEXhgxahKgWLgx'
 BASE_ID_NEW = 'app5s8zl7DsUaDmtx'
 TABLE_NAME_NEW = 'profiles_cleaned'
 TABLE_NAME_NEW1 = 'profiles_outreach'
 TABLE_NAME_NEW2 = 'client_details'
 TABLE_NAME_NEW3 = 'contacts_taippa_marketing'
 API_KEY_NEW = os.getenv('AIRTABLE_API_KEY', 'patELEdV0LAx6Aba3.393bf0e41eb59b4b80de15b94a3d122eab50035c7c34189b53ec561de590dff3')
-# API_KEY_NEW1 = os.getenv('AIRTABLE_API_KEY', 'patPgbQSC8pAg1Gbl.7ca275de5a5c8f2cf4389452e91c8f3f6c3e37bb2967c0f4cd8f41fa9d99044d')
-# API_KEY_NEW1 = 'patPgbQSC8pAg1Gbl.7ca275de5a5c8f2cf4389452e91c8f3f6c3e37bb2967c0f4cd8f41fa9d99044d'
-
 
 airtable_old = Airtable(BASE_ID_OLD, TABLE_NAME_OLD, API_KEY)
 airtable_new = Airtable(BASE_ID_NEW, TABLE_NAME_NEW, API_KEY_NEW)
@@ -35,38 +29,37 @@ try:
 except Exception as e:
     print(f"Error initializing Airtable: {e}")
 
-
-def record_exists_in_airtable(airtable_instance, record_data, unique_field):
+def fetch_max_created_time(airtable_instance):
     """
-    Check if a record with the same unique identifier already exists in Airtable.
+    Fetch the maximum created_time from profiles_cleaned.
     """
-    unique_value = record_data.get(unique_field)
-    if not unique_value:
-        return False
+    records = airtable_instance.get_all()
+    created_times = [pd.to_datetime(record['createdTime']) for record in records if 'createdTime' in record]
+    return max(created_times) if created_times else None
 
-    # Search for the uniqueId field in Airtable
-    search_result = airtable_instance.search(unique_field, unique_value)
-    return len(search_result) > 0
-
-
+def filter_new_records(df, max_created_time):
+    """
+    Filters rows with created_time greater than the max_created_time.
+    """
+    if max_created_time is not None:
+        df['created_time'] = pd.to_datetime(df['created_time'], errors='coerce')
+        df = df[df['created_time'] > max_created_time]
+    return df
 
 def send_to_airtable_if_new(df, airtable_instance, unique_field, desired_fields=None, field_mapping=None, default_values=None, icp_to_outreach=None, icp_df=None):
-  
+    """
+    Send new records to Airtable after filtering and mapping fields.
+    """
     for i, row in df.iterrows():
         try:
-            # Step 1: Convert row to dictionary
             record_data = row.dropna().to_dict()
 
-            # Step 2: Restrict to desired fields if provided
             if desired_fields:
                 record_data = {field: record_data[field] for field in desired_fields if field in record_data}
 
-            # Step 3: Add uniqueId to record
             unique_id_value = f"{record_data.get('id', '')}_{record_data.get('email', '')}"
             record_data["unique_id"] = unique_id_value
 
-
-            # Step 5: Map icp_to_outreach fields if applicable
             if icp_to_outreach and icp_df is not None:
                 client_id = row.get("associated_client_id")
                 if client_id:
@@ -76,21 +69,18 @@ def send_to_airtable_if_new(df, airtable_instance, unique_field, desired_fields=
                             if icp_field in matching_icp_rows.columns:
                                 record_data[outreach_field] = matching_icp_rows.iloc[0][icp_field]
 
-            # Step 6: Apply field name mapping if provided
             if field_mapping:
                 record_data = {field_mapping.get(k, k): v for k, v in record_data.items()}
 
-            # Step 7: Remove 'created_time' field explicitly if it exists
             if 'created_time' in record_data:
                 del record_data['created_time']
-            
-            # Step 8: Add default values if provided
+
             if default_values:
                 for key, value in default_values.items():
                     record_data.setdefault(key, value)
 
-            # Step 9: Check for duplicates and insert
-            if not record_exists_in_airtable(airtable_instance, {"unique_id": unique_id_value}, unique_field):
+            search_result = airtable_instance.search(unique_field, unique_id_value)
+            if not search_result:
                 try:
                     airtable_instance.insert(record_data)
                     print(f"Record {i} inserted successfully into {airtable_instance}.")
@@ -101,8 +91,6 @@ def send_to_airtable_if_new(df, airtable_instance, unique_field, desired_fields=
 
         except Exception as e:
             print(f"Error processing record {i}: {e}")
-
-
 
 def clean_name(df, column_name):
     
@@ -193,185 +181,74 @@ def fetch_client_details(df, airtable_instance, icp_field="associated_client_id"
 @app.route("/", methods=["GET"])
 def fetch_and_update_data():
     try:
-        print(f"BASE_ID_OLD : {BASE_ID_OLD}")
-        print(f"TABLE_NAME_OLD : {TABLE_NAME_OLD}")
-        print(f"API_KEY : {API_KEY}")
         all_records = airtable_old.get_all()
-
         data = [record.get('fields', {}) for record in all_records]
-        record_ids = [record['id'] for record in all_records]
 
         if not data:
             return jsonify({"message": "No data found in the old Airtable."})
 
         df = pd.DataFrame(data)
-        
-        df = df.dropna(how='all')  
+        df = df.dropna(how='all')
 
         df.to_csv("berkleyshomes_apollo.csv", index=False)
-        # Replace problematic values
         df.replace([np.inf, -np.inf], np.nan, inplace=True)
         df = df.where(pd.notnull(df), None)
-        
-        
+
         for column in df.select_dtypes(include=['object']).columns:
             df[column] = df[column].fillna("Unknown")
 
-        # # Clean 'first_name'
         if 'first_name' in df.columns:
-            df = clean_name(df, 'first_name')
-        # # Clean 'last_name'
+            df['first_name'] = df['first_name'].str.strip().str.capitalize()
         if 'last_name' in df.columns:
-            df = clean_name(df, 'last_name')
-        
+            df['last_name'] = df['last_name'].str.strip().str.capitalize()
 
-         # Clean 'email'
         if 'email' in df.columns:
             df['email'] = (
                 df['email']
                 .astype(str)
                 .str.lower()
                 .str.strip()
-                .apply(lambda x: process_email(x))
-            )
-        
-        #clean linkedin_url
-        if ' linkedin_url' in df.columns:
-            df[' linkedin_url'] = df.apply(
-                lambda row: clean_urls(row[' linkedin_url'], row.name, ' linkedin_url'), axis=1
+                .apply(lambda x: re.sub(r'\+.*?@', '@', x))
             )
 
-        
-        # Function to clean company website URLs
+        if 'created_time' in df.columns:
+            max_created_time = fetch_max_created_time(airtable_new)
+            df = filter_new_records(df, max_created_time)
 
-
-
-        # Function to clean the headline
-        if 'headline' in df.columns:
-            def clean_headline(headline):
-                if pd.isna(headline):
-                    return headline
-                
-                # Standardize capitalization (title case)
-                headline = str(headline).strip().title()
-                # Remove pipe symbols and extra spaces
-                headline = headline.replace('|', ',')
-                headline = ' '.join(headline.split())  # Strip extra spaces
-                
-                # Remove pipe symbols and extra spaces
-                headline = headline.replace('|', ',')
-                headline = ' '.join(headline.split())  # Strip extra spaces
-                
-                return headline
-
-            # Apply cleaning function to the "headline" column
-            df['headline'] = df['headline'].apply(clean_headline)
-
-        #clean photo_url
-        if 'photo_url' in df.columns:
-            df['photo_url'] = df.apply(
-                lambda row: clean_urls(row['photo_url'], row.name, 'photo_url'), axis=1
-            )
-
-        #clean twitter_url
-        if 'twitter_url' in df.columns:
-            df['twitter_url'] = df.apply(
-                lambda row: clean_urls(row['twitter_url'], row.name, 'twitter_url'), axis=1
-            )    
-
-        #clean organization_website
-        if 'organization_website' in df.columns:
-            df['organization_website'] = df.apply(
-                lambda row: clean_urls(row['organization_website'], row.name, 'organization_website'), axis=1
-            )    
-
-        #clean organization_linkedin
-        if 'organization_linkedin' in df.columns:
-            df['organization_linkedin'] = df.apply(
-                lambda row: clean_urls(row['organization_linkedin'], row.name, 'organization_linkedin'), axis=1
-            ) 
-
-        #clean organization_facebook
-        if 'organization_facebook' in df.columns:
-            df['organization_facebook'] = df.apply(
-                lambda row: clean_urls(row['organization_facebook'], row.name, 'organization_facebook'), axis=1
-            ) 
-
-        #clean organization_logo
-        if 'organization_logo' in df.columns:
-            df['organization_logo'] = df.apply(
-                lambda row: clean_urls(row['organization_logo'], row.name, 'organization_logo'), axis=1
-            ) 
-        #clean organization_phone
-        if 'organization_phone' in df.columns:
-            df = clean_name(df, 'organization_phone')
-
-        if 'organization_phone' in df.columns:
-             df['organization_phone'] = df['organization_phone'].apply(clean_phone_number)
-       
-
-
-        # Duplicate rows for each email
-        df = expand_emails(df)
-        
-        # Create uniqueId column by combining 'id' and 'email'
-        df['unique_id'] = df['id'].fillna("Unknown") + "_" + df['email'].fillna("Unknown")   
-         
-        
-
-        # Drop duplicates based on 'id' and 'email'
+        df['unique_id'] = df['id'].fillna("Unknown") + "_" + df['email'].fillna("Unknown")
         df = df.drop_duplicates(subset=['id', 'email'])
-
-        # Filter records with email not equal to "Unknown"
         filtered_df = df[df['email'] != "Unknown"]
 
-        # Fetch the record from ICP_information based on the email
         campaign_field_mapping = {
             "first_name": "recipient_first_name",
             "last_name": "recipient_last_name",
             "email": "recipient_email",
             "organization_name": "recipient_company",
-            # "location": "RecipientLocation",
             "title": "recipient_role",
             "organization_website": "recipient_company_website",
             "organization_short_description": "recipient_bio",
-            "linkedin_url" : "linkedin_profile_url",
-            # "id" : "id"
-            # Add other mappings as needed
+            "linkedin_url": "linkedin_profile_url",
         }
-       
-    
-           
 
-        default_values_campaign = {
-            # "cta_options" : "Schedule a quick 15-minute call to discuss how we can help GrowthTech Solutions scale personalized email outreach. At https://taippa.com/contact/ ",
-            # "color_scheme" : "#000000,#ffffff,#b366cf,#6834cb",
-            # "fonts" : " Headlines: Anton Body: Poppins"
-        }
-       
-        # Fetch ICP records based on associated_client_id
+        default_values_campaign = {}
+
         icp_df = fetch_client_details(df, airtable_new2, icp_field="associated_client_id", client_details_field="client_id")
 
-       
-
-        # Define field mapping for outreach_data
         icp_to_outreach_mapping = {
             "sender_email": "email",
             "sender_company": "company_name",
             "sender_name": "full_name",
             "sender_title": "job_title",
             "sender_company_website": "company_website",
-            "key_benefits" : "solution_benefits",            
-            "impact_metrics" : "solution_impact_examples",
-            "unique_features" : "unique_features",
-            "cta_options" : "cta_options",
-            "color_scheme" : "color_scheme",
-            "font_style" : "font_style",
-            "instantly_campaign_id" : "instantly_campaign_id",
-            "business_type" : "business_type",
-            "outreach_table" : "outreach_table"
-            # hi sravan
-
+            "key_benefits": "solution_benefits",
+            "impact_metrics": "solution_impact_examples",
+            "unique_features": "unique_features",
+            "cta_options": "cta_options",
+            "color_scheme": "color_scheme",
+            "font_style": "font_style",
+            "instantly_campaign_id": "instantly_campaign_id",
+            "business_type": "business_type",
+            "outreach_table": "outreach_table"
         }
 
         send_to_airtable_if_new(df, airtable_new, unique_field='unique_id')
@@ -380,7 +257,6 @@ def fetch_and_update_data():
             airtable_new1,
             unique_field="unique_id",
             desired_fields=[
-                
                 "linkedin_url",
                 "first_name",
                 "last_name",
@@ -398,8 +274,7 @@ def fetch_and_update_data():
             icp_to_outreach=icp_to_outreach_mapping,
             default_values=default_values_campaign,
             icp_df=icp_df,
-                    )
-        
+        )
 
         return jsonify({"message": "Data cleaned, updated, and old records processed successfully."})
 
