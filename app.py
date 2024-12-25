@@ -501,7 +501,7 @@ def initialize_data_sanitization():
 def test_run_pipeline(test_run_id,client_id):
     try:
         record_exists = unique_key_check_airtable(column_name='id',unique_value=test_run_id)
-        if not record_exists:
+        if record_exists:
             print(f'Record with the following id: {apollo_id} already exists. Skipping the entry...')
             return True
         enrichment_api_response = people_enrichment(test_run_id)
