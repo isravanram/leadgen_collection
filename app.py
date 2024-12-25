@@ -502,7 +502,7 @@ def test_run_pipeline(test_run_id,client_id):
     try:
         record_exists = unique_key_check_airtable(column_name='id',unique_value=test_run_id)
         if record_exists:
-            print(f'Record with the following id: {apollo_id} already exists. Skipping the entry...')
+            print(f'Record with the following id: {test_run_id} already exists. Skipping the entry...')
             return True
         enrichment_api_response = people_enrichment(test_run_id)
         if enrichment_api_response.status_code == 200:
