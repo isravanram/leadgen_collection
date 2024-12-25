@@ -147,6 +147,7 @@ results_per_page = st.text_input("Results per Page:", 1)
 client_id = st.text_input("Client Id:", "berkleys_homes")
 server_test = st.radio("Test in server:", options=["yes", "no"], index=1)
 test_run = st.radio("Test run:", options=["yes", "no"], index=1)
+qualify_leads = st.radio("Qualify Leads:", options=["yes", "no"], index=0)
 test_run_id=''
 if test_run=="yes":
     test_run_id = st.text_input("Test run id:", "63568114be7c760001dc78c6")
@@ -167,14 +168,13 @@ if st.button("Fetch Data"):
 
         if server_test == "yes":
             response = requests.get(
-                    f"https://magmostafa.pythonanywhere.com/data_ingestion?page={page_number}&per_page={results_per_page}&job_titles={job_titles}&person_seniorities={person_seniorities}&person_locations={person_locations}&organization_locations={organization_locations}&email_status={email_status}&organization_num_employees_ranges={organization_num_employees_ranges}&client_id={client_id}&test_run_id={test_run_id}"
+                    f"https://magmostafa.pythonanywhere.com/data_ingestion?page={page_number}&per_page={results_per_page}&job_titles={job_titles}&person_seniorities={person_seniorities}&person_locations={person_locations}&organization_locations={organization_locations}&email_status={email_status}&organization_num_employees_ranges={organization_num_employees_ranges}&client_id={client_id}&test_run_id={test_run_id}&qualify_leads={qualify_leads}"
                 )
         else:
             response = requests.get(
-                    f"http://127.0.0.1:5000/data_ingestion?page={page_number}&per_page={results_per_page}&job_titles={job_titles}&person_seniorities={person_seniorities}&person_locations={person_locations}&organization_locations={organization_locations}&email_status={email_status}&organization_num_employees_ranges={organization_num_employees_ranges}&client_id={client_id}&test_run_id={test_run_id}"
+                    f"http://127.0.0.1:5000/data_ingestion?page={page_number}&per_page={results_per_page}&job_titles={job_titles}&person_seniorities={person_seniorities}&person_locations={person_locations}&organization_locations={organization_locations}&email_status={email_status}&organization_num_employees_ranges={organization_num_employees_ranges}&client_id={client_id}&test_run_id={test_run_id}&qualify_leads={qualify_leads}"
                 )
         print(response)
-        print('----')
         print('-------COMPLETED-----------')
         if response.status_code == 200:
             st.write("API Call Successful!")

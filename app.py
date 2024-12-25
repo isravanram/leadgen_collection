@@ -330,6 +330,8 @@ def qualify_lead(persona_details,solution_benefits,unique_features,solution_impa
         Below are examples of warm lead profiles. These are generic examples, which means this is not exactly how they should look:
         {buyer_examples}
 
+        If no examples are provided, you can use the already existing information
+
         Now, based on the provided details, does this person match the profile of a 'warm' lead for our company?
         Answer with **Yes/No** and provide a brief justification.
         """
@@ -364,7 +366,7 @@ def people_enrichment(apollo_id):
     except Exception as e:
         execute_error_block(f"Error occured in the data enrichment layer. {e}")
 
-def people_search(query_params,client_id):
+def people_search(query_params,client_id,qualify_leads):
   try:
     print(f"\n------------Started Persona Data Mining------------")
     base_url = "https://api.apollo.io/api/v1/mixed_people/search"
@@ -382,24 +384,26 @@ def people_search(query_params,client_id):
         solution_benefits,unique_features,solution_impact_examples,domain,buyer_criteria,buyer_examples = fetch_client_details(client_id)
         print(f"\n------------Initiating Persona Data Fetch Iteration------------")
         for contact in data['people']:
-            print('---second iteration started--')
             apollo_id = contact['id']
             unique_value = apollo_id
             persona_details=parse_people_info(contact)
-            qualification_status = qualify_lead(
-                persona_details=persona_details,
-                solution_benefits=solution_benefits,
-                unique_features=unique_features,
-                solution_impact_examples=solution_impact_examples,
-                domain=domain,
-                buyer_criteria=buyer_criteria,
-                buyer_examples=buyer_examples
-                )
-            if not qualification_status:
-                print(f"\n------------Lead Disqualified------------")
-                print('Skipping the entry...')
-                continue
-            print(f"\n------------Lead Qualified------------")
+            if qualify_leads:
+                qualification_status = qualify_lead(
+                    persona_details=persona_details,
+                    solution_benefits=solution_benefits,
+                    unique_features=unique_features,
+                    solution_impact_examples=solution_impact_examples,
+                    domain=domain,
+                    buyer_criteria=buyer_criteria,
+                    buyer_examples=buyer_examples
+                    )
+                if not qualification_status:
+                    print(f"\n------------Lead Disqualified------------")
+                    print('Skipping the entry...')
+                    continue
+                print(f"\n------------Lead Qualified------------")
+            else:
+                print(f"Skipping lead qualification...")
             print(f"\n------------Data ingestion started for record id :{apollo_id}------------")
             record_exists = unique_key_check_airtable(column_name='id',unique_value=apollo_id)   
             if record_exists:
@@ -573,6 +577,7 @@ def execute_collection():
     client_id = request.args.get('client_id', default='taippa_marketing', type=str)
     test_run_id = request.args.get('test_run_id', default='', type=str)
     if not test_run_id:
+        qualify_leads = request.args.get('qualify_leads', default='yes', type=str)
         job_titles = request.args.get('job_titles', default='', type=str)
         person_seniorities = request.args.get('person_seniorities', default='', type=str)
         person_locations = request.args.get('person_locations', default='', type=str)
@@ -603,7 +608,7 @@ def execute_collection():
         ]
         query_params.append(f"page={page_number}")
         query_params.append(f"per_page={results_per_page}")
-        success_status = people_search(query_params,client_id)
+        success_status = people_search(query_params,client_id,qualify_leads)
     else:
         success_status = test_run_pipeline(test_run_id,client_id)
     return 'Successfully collected the data' if success_status else 'Failed retrieving information from Apollo.'
