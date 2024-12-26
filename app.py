@@ -470,7 +470,6 @@ def people_search(query_params,client_id,qualify_leads):
         print(f"Total profiles found: {profiles_found}")
         print(f"Total profiles enriched: {enriched_profiles}")
         print(f"Total profiles uploaded: {selected_profiles}")
-        return True
         response=fetch_and_update_data()
         print(response)
         print('\n------------ Data Cleaning Completed: Data Ready for Outreach ------------\n')
