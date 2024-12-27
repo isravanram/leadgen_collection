@@ -9,7 +9,7 @@ import requests
 import openai
 import sys
 
-from data_sanitization import fetch_and_update_data
+from data_sanitization import fetch_and_update_data, update_email_opens
 
 print(f"\n=============== Generate : Data Ingestion  ===============")
 print('Starting the app')
@@ -500,6 +500,14 @@ def initialize_data_sanitization():
         return response
     except Exception as e:
         execute_error_block(f"Error occured while initializing data sanitization module {e}")
+
+@app.route("/update-email-opens", methods=["GET"])
+def update_email_opens_clicked():
+    try:
+        response = update_email_opens()
+        return response
+    except Exception as e:
+        execute_error_block(f"Error occured while counting email opened and email clicked {e}")
 
 def test_run_pipeline(test_run_id,client_id):
     try:
