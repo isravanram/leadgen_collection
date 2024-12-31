@@ -22,6 +22,7 @@ TABLE_NAME_EMAIL_OPENED = 'email_opened'
 TABLE_NAME_LINK_CLICKED = 'link_opened'
 TABLE_NAME_METRICS = 'metrics'
 TABLE_NAME_EMAIL_SENT = 'email_sent'
+TABLE_NAME_REPLIES_RECIEVED = 'replies_received'
 API_KEY_NEW = os.getenv('AIRTABLE_API_KEY', 'patELEdV0LAx6Aba3.393bf0e41eb59b4b80de15b94a3d122eab50035c7c34189b53ec561de590dff3')
 
 airtable_old = Airtable(BASE_ID_OLD, TABLE_NAME_OLD, API_KEY)
@@ -31,6 +32,7 @@ airtable_new3 = Airtable(BASE_ID_NEW, TABLE_NAME_NEW3, API_KEY_NEW)
 airtable_email = Airtable(BASE_ID_NEW, TABLE_NAME_EMAIL_OPENED, API_KEY_NEW)
 airtable_link = Airtable(BASE_ID_NEW, TABLE_NAME_LINK_CLICKED, API_KEY_NEW)
 airtable_email_sent = Airtable(BASE_ID_NEW, TABLE_NAME_EMAIL_SENT, API_KEY_NEW)
+airtable_replies_received = Airtable(BASE_ID_NEW, TABLE_NAME_REPLIES_RECIEVED, API_KEY_NEW)
 airtable_metrics = Airtable(BASE_ID_NEW, TABLE_NAME_METRICS, API_KEY_NEW)
 try:
     airtable_new2 = Airtable(BASE_ID_NEW, TABLE_NAME_NEW2, API_KEY_NEW)
@@ -373,8 +375,18 @@ def update_email_opens():
 
         # Count unique emails for each campaign_id
         unique_email_count = email_sent_df.groupby('campaign_id')['email'].nunique().to_dict()
-        print(unique_email_count)
-        # Step 6: Update the metrics table with opened, clicked, and unique email counts
+        # Step 6: Fetch all records from airtable_email_sent table for unique email count
+        email_reply_records = airtable_replies_received.get_all()
+        email_reply_df = pd.DataFrame([record['fields'] for record in email_reply_records])
+
+        # Ensure required columns exist
+        if 'campaign_id' not in email_reply_df.columns or 'email' not in email_reply_df.columns:
+            return jsonify({"error": "campaign_id or email column is missing in airtable_email_sent table"}), 400
+
+        # Count unique emails for each campaign_id
+        reply_count = email_reply_df.groupby('campaign_id')['email'].nunique().to_dict()
+
+        # Step 7: Update the metrics table with opened, clicked, and unique email counts
         for campaign_id in set(email_count.keys()).union(email_click_count.keys()).union(unique_email_count.keys()):
             # Search for the record in the metrics table
             metrics_record = airtable_metrics.search('campaign_id', campaign_id)
@@ -393,6 +405,10 @@ def update_email_opens():
                 # Update the unique email count
                 if campaign_id in unique_email_count:
                     update_data["sequence_started"] = str(unique_email_count[campaign_id])  # Convert to string for long text
+
+                # Update the unique email count
+                if campaign_id in reply_count:
+                    update_data["replies_received"] = str(reply_count[campaign_id])  # Convert to string for long text
 
                 # Update the record in Airtable
                 airtable_metrics.update(record_id, update_data)
