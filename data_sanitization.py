@@ -18,12 +18,22 @@ TABLE_NAME_NEW = 'profiles_cleaned'
 TABLE_NAME_NEW1 = 'profiles_outreach'
 TABLE_NAME_NEW2 = 'client_details'
 TABLE_NAME_NEW3 = 'contacts_taippa_marketing'
+TABLE_NAME_EMAIL_OPENED = 'email_opened'
+TABLE_NAME_LINK_CLICKED = 'link_opened'
+TABLE_NAME_METRICS = 'metrics'
+TABLE_NAME_EMAIL_SENT = 'email_sent'
+TABLE_NAME_REPLIES_RECIEVED = 'replies_received'
 API_KEY_NEW = os.getenv('AIRTABLE_API_KEY', 'patELEdV0LAx6Aba3.393bf0e41eb59b4b80de15b94a3d122eab50035c7c34189b53ec561de590dff3')
 
 airtable_old = Airtable(BASE_ID_OLD, TABLE_NAME_OLD, API_KEY)
 airtable_new = Airtable(BASE_ID_NEW, TABLE_NAME_NEW, API_KEY_NEW)
 airtable_new1 = Airtable(BASE_ID_NEW, TABLE_NAME_NEW1, API_KEY_NEW)
 airtable_new3 = Airtable(BASE_ID_NEW, TABLE_NAME_NEW3, API_KEY_NEW)
+airtable_email = Airtable(BASE_ID_NEW, TABLE_NAME_EMAIL_OPENED, API_KEY_NEW)
+airtable_link = Airtable(BASE_ID_NEW, TABLE_NAME_LINK_CLICKED, API_KEY_NEW)
+airtable_email_sent = Airtable(BASE_ID_NEW, TABLE_NAME_EMAIL_SENT, API_KEY_NEW)
+airtable_replies_received = Airtable(BASE_ID_NEW, TABLE_NAME_REPLIES_RECIEVED, API_KEY_NEW)
+airtable_metrics = Airtable(BASE_ID_NEW, TABLE_NAME_METRICS, API_KEY_NEW)
 try:
     airtable_new2 = Airtable(BASE_ID_NEW, TABLE_NAME_NEW2, API_KEY_NEW)
 except Exception as e:
@@ -282,6 +292,132 @@ def fetch_and_update_data():
         return jsonify({"error": f"Error fetching, processing, or deleting data: {e}"}), 500
 
 
+# @app.route('/update-email-opens', methods=['POST'])
+# def update_email_opens():
+#     try:
+#         # Step 1: Fetch all records from email_opened table
+#         email_records = airtable_email.get_all()
+#         email_df = pd.DataFrame([record['fields'] for record in email_records])
+
+#         # Step 2: Count the number of emails opened for each campaign_id
+#         if 'campaign_id' not in email_df.columns:
+#             return jsonify({"error": "campaign_id column is missing in email_opened table"}), 400
+
+#         email_count = email_df['campaign_id'].value_counts().to_dict()
+
+#         # Step 3: Fetch all records from airtable_link table to count all emails clicked per campaign_id
+#         link_records = airtable_link.get_all()
+#         link_df = pd.DataFrame([record['fields'] for record in link_records])
+
+#         # Step 4: Count the total number of emails clicked for each campaign_id (not unique)
+#         if 'campaign_id' not in link_df.columns or 'email' not in link_df.columns:
+#             return jsonify({"error": "campaign_id or email column is missing in airtable_link table"}), 400
+
+#         # Count all occurrences of email for each campaign_id (instead of unique emails)
+#         email_click_count = link_df.groupby('campaign_id')['email'].count().to_dict()
+
+#         # Step 5: Update the opened and clicked fields in metrics table
+#         for campaign_id in set(email_count.keys()).union(email_click_count.keys()):
+#             # Search for the record in the metrics table
+#             metrics_record = airtable_metrics.search('campaign_id', campaign_id)
+#             if metrics_record:
+#                 record_id = metrics_record[0]['id']
+#                 update_data = {}
+
+#                 # Update the opened count
+#                 if campaign_id in email_count:
+#                     update_data["opened"] = str(email_count[campaign_id])  # Convert to string for long text
+
+#                 # Update the clicked count
+#                 if campaign_id in email_click_count:
+#                     update_data["clicked"] = str(email_click_count[campaign_id])  # Convert to string for long text
+
+#                 # Update the record in Airtable
+#                 airtable_metrics.update(record_id, update_data)
+#                 print(f"Updated campaign_id {campaign_id} with data: {update_data}")
+
+#         return jsonify({"message": "Opened and clicked counts updated successfully in metrics table"}), 200
+
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
+
+@app.route('/update-email-opens', methods=['POST'])
+def update_email_opens():
+    try:
+        # Step 1: Fetch all records from email_opened table
+        email_records = airtable_email.get_all()
+        email_df = pd.DataFrame([record['fields'] for record in email_records])
+
+        # Step 2: Count the number of emails opened for each campaign_id
+        if 'campaign_id' not in email_df.columns:
+            return jsonify({"error": "campaign_id column is missing in email_opened table"}), 400
+
+        email_count = email_df['campaign_id'].value_counts().to_dict()
+
+        # Step 3: Fetch all records from airtable_link table to count all emails clicked per campaign_id
+        link_records = airtable_link.get_all()
+        link_df = pd.DataFrame([record['fields'] for record in link_records])
+
+        # Step 4: Count the total number of emails clicked for each campaign_id (not unique)
+        if 'campaign_id' not in link_df.columns or 'email' not in link_df.columns:
+            return jsonify({"error": "campaign_id or email column is missing in airtable_link table"}), 400
+
+        # Count all occurrences of email for each campaign_id (instead of unique emails)
+        email_click_count = link_df.groupby('campaign_id')['email'].count().to_dict()
+
+        # Step 5: Fetch all records from airtable_email_sent table for unique email count
+        email_sent_records = airtable_email_sent.get_all()
+        email_sent_df = pd.DataFrame([record['fields'] for record in email_sent_records])
+
+        # Ensure required columns exist
+        if 'campaign_id' not in email_sent_df.columns or 'email' not in email_sent_df.columns:
+            return jsonify({"error": "campaign_id or email column is missing in airtable_email_sent table"}), 400
+
+        # Count unique emails for each campaign_id
+        unique_email_count = email_sent_df.groupby('campaign_id')['email'].nunique().to_dict()
+        # Step 6: Fetch all records from airtable_email_sent table for unique email count
+        email_reply_records = airtable_replies_received.get_all()
+        email_reply_df = pd.DataFrame([record['fields'] for record in email_reply_records])
+
+        # Ensure required columns exist
+        if 'campaign_id' not in email_reply_df.columns or 'email' not in email_reply_df.columns:
+            return jsonify({"error": "campaign_id or email column is missing in airtable_email_sent table"}), 400
+
+        # Count unique emails for each campaign_id
+        reply_count = email_reply_df.groupby('campaign_id')['email'].nunique().to_dict()
+
+        # Step 7: Update the metrics table with opened, clicked, and unique email counts
+        for campaign_id in set(email_count.keys()).union(email_click_count.keys()).union(unique_email_count.keys()):
+            # Search for the record in the metrics table
+            metrics_record = airtable_metrics.search('campaign_id', campaign_id)
+            if metrics_record:
+                record_id = metrics_record[0]['id']
+                update_data = {}
+
+                # Update the opened count
+                if campaign_id in email_count:
+                    update_data["opened"] = str(email_count[campaign_id])  # Convert to string for long text
+
+                # Update the clicked count
+                if campaign_id in email_click_count:
+                    update_data["clicked"] = str(email_click_count[campaign_id])  # Convert to string for long text
+
+                # Update the unique email count
+                if campaign_id in unique_email_count:
+                    update_data["sequence_started"] = str(unique_email_count[campaign_id])  # Convert to string for long text
+
+                # Update the unique email count
+                if campaign_id in reply_count:
+                    update_data["replies_received"] = str(reply_count[campaign_id])  # Convert to string for long text
+
+                # Update the record in Airtable
+                airtable_metrics.update(record_id, update_data)
+                print(f"Updated campaign_id {campaign_id} with data: {update_data}")
+
+        return jsonify({"message": "Opened, clicked, and unique email counts updated successfully in metrics table"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/post-data', methods=['GET'])
