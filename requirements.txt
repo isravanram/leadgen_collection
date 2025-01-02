@@ -1,3 +1,4 @@
+streamlit_tags
 flask
 airtable
 pyairtable
