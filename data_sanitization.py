@@ -4,6 +4,8 @@ import pandas as pd
 import numpy as np
 import os
 import re
+import json
+
 
 app = Flask(__name__)
 
@@ -371,40 +373,206 @@ def update_email_opens():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+from flask import Flask, jsonify, request
+import pandas as pd
+
+# Initialize Flask app
+app = Flask(__name__)
+
+def fetch_airtable_data(airtable_instance):
+    """
+    Fetch all records from Airtable and convert them into a cleaned pandas DataFrame.
+    """
+    records = airtable_instance.get_all()
+    data = [record.get('fields', {}) for record in records]
+    df = pd.DataFrame(data)
+    return clean_dataframe(df)
+
+def clean_dataframe(df):
+    """
+    Clean the DataFrame by replacing NaN, infinite, and out-of-range float values.
+    """
+    return df.replace([pd.NA, float('inf'), float('-inf')], None)
+
+def match_and_return_records(lead_magnet_df, new3_df):
+    """
+    Compare the recipient_email from new3_df with the email from lead_magnet_df.
+    Return matched records with id, recipient_role, and email.
+    """
+    matched_records = []
+    for _, new3_row in new3_df.iterrows():
+        recipient_email = new3_row.get('recipient_email')
+        matching_row = lead_magnet_df[lead_magnet_df['email'] == recipient_email]
+        if not matching_row.empty:
+            # Append matched records
+            matched_records.append({
+                'id': new3_row.get('id'),
+                'recipient_role': new3_row.get('recipient_role'),
+                'email': recipient_email
+            })
+
+    # Filter duplicates by email, keeping the most complete record
+    unique_records = filter_unique_records(matched_records)
+    return unique_records
+
+def filter_unique_records(records):
+    """
+    Filter duplicate records by email, prioritizing those with valid 'id' and 'recipient_role'.
+    """
+    grouped = {}
+    for record in records:
+        email = record.get('email')
+        if not email:
+            continue
+
+        if email not in grouped:
+            grouped[email] = record
+        else:
+            # Prioritize the record with valid fields
+            if not grouped[email].get('id') and record.get('id'):
+                grouped[email]['id'] = record['id']
+            if not grouped[email].get('recipient_role') and record.get('recipient_role'):
+                grouped[email]['recipient_role'] = record['recipient_role']
+
+    return list(grouped.values())
+
+def send_to_airtable(airtable_instance, records):
+    """
+    Update records in the Airtable instance for the corresponding email.
+    """
+    for record in records:
+        email = record.get('email')
+        if not email:
+            continue
+
+        # Find the Airtable record matching the email
+        existing_records = airtable_instance.get_all(formula=f"{{email}} = '{email}'")
+        if not existing_records:
+            print(f"No record found for email: {email}")
+            continue
+
+        # Get the record ID of the first match
+        record_id = existing_records[0]['id']
+
+        # Update the corresponding record with the new data
+        update_data = {key: value for key, value in record.items() if key != 'email'}
+        airtable_instance.update(record_id, update_data)
 
 @app.route('/collect_lead_magnet', methods=['POST'])
 def collect_lead_magnet():
+    """
+    Endpoint to process data from both Airtable tables, match emails, and return a JSON response.
+    """
     try:
-        # Fetch all records from lead_magnet_details
-        lead_magnet_records = airtable_lead_magnet.get_all()
-        lead_magnet_emails = {
-            record['fields']['email']: record['id']
-            for record in lead_magnet_records if 'email' in record['fields']
-        }
+        # Fetch data from Airtable
+        lead_magnet_df = fetch_airtable_data(airtable_lead_magnet)
+        new3_df = fetch_airtable_data(airtable_new3)
 
-        # Fetch all records from contacts_taippa_marketing
-        new3_records = airtable_new3.get_all()
-        new3_data = {
-            record['fields']['recipient_email']: {
-                'id': record['fields'].get('id'),
-                'recipient_role': record['fields'].get('recipient_role'),
-                'recipient_company': record['fields'].get('recipient_company')
-            }
-            for record in new3_records if 'recipient_email' in record['fields']
-        }
+        # Match records
+        matched_records = match_and_return_records(lead_magnet_df, new3_df)
 
-        # Sync data
-        updates = []
-        for email, lead_magnet_id in lead_magnet_emails.items():
-            if email in new3_data:
-                update_data = new3_data[email]
-                airtable_lead_magnet.update(lead_magnet_id, update_data)
-                updates.append({"email": email, "update": update_data})
+        # Send matched records back to Airtable
+        send_to_airtable(airtable_lead_magnet, matched_records)
 
-        return jsonify({"message": "Lead magnet synced successfully", "updates": updates}), 200
-
+        # Return matched records as a JSON response
+        return jsonify(matched_records), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+
+
+
+
+
+# @app.route('/collect_lead_magnet', methods=['POST'])
+# def collect_lead_magnet():
+#     try:
+#         # Fetch all records from lead_magnet_details
+#         lead_magnet_records = airtable_lead_magnet.get_all()
+#         lead_magnet_emails = {
+#             record['fields']['email']: record['id']
+#             for record in lead_magnet_records if 'email' in record['fields']
+#         }
+
+#         # Fetch all records from contacts_taippa_marketing
+#         new3_records = airtable_new3.get_all()
+#         new3_data = {
+#             record['fields']['recipient_email']: {
+#                 'id': record['fields'].get('id'),
+#                 'recipient_role': record['fields'].get('recipient_role'),
+#                 'recipient_company': record['fields'].get('recipient_company')
+#             }
+#             for record in new3_records if 'recipient_email' in record['fields']
+#         }
+
+#         # Sync data
+#         updates = []
+#         for email, lead_magnet_id in lead_magnet_emails.items():
+#             if email in new3_data:
+#                 update_data = new3_data[email]
+#                 airtable_lead_magnet.update(lead_magnet_id, update_data)
+#                 updates.append({"email": email, "update": update_data})
+
+#         return jsonify({"message": "Lead magnet synced successfully", "updates": updates}), 200
+
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
+
+# @app.route('/collect_lead_magnet', methods=['POST'])
+# def collect_lead_magnet():
+#     try:
+#         # Fetch all records from Airtable
+#         new3_records = airtable_new3.get_all()
+#         lead_magnet_records = airtable_lead_magnet.get_all()
+
+#         # Convert to DataFrames, ensuring IDs are included
+#         new3_df = pd.DataFrame([
+#             {**record['fields'], 'id': record['id']} for record in new3_records
+#         ])
+#         lead_magnet_df = pd.DataFrame([
+#             {**record['fields'], 'record_id': record['id']} for record in lead_magnet_records
+#         ])
+
+#         # Fill NaN with empty strings for compatibility
+#         new3_df.fillna('', inplace=True)
+#         lead_magnet_df.fillna('', inplace=True)
+
+#         # Merge data on email fields
+#         matched_df = new3_df.merge(lead_magnet_df, left_on='recipient_email', right_on='email', how='inner')
+
+#         # Drop duplicate records for the same recipient
+#         matched_df = matched_df.drop_duplicates(subset=['record_id', 'recipient_email'])
+
+#         # Debug: Check merged data
+#         print("Matched DataFrame columns:", matched_df.columns)
+
+#         # Update records in Airtable
+#         for _, row in matched_df.iterrows():
+#             update_data = {
+#                 'id': row.get('id', ''),
+#                 'recipient_role': row.get('recipient_role', ''),
+#                 'recipient_company': row.get('recipient_company', '')
+#             }
+
+#             if not any(update_data.values()):
+#                 print(f"Skipping record due to missing or empty values: {update_data}")
+#                 continue
+
+#             print(f"Updating record {row['record_id']} with data: {update_data}")
+
+#             try:
+#                 airtable_lead_magnet.update(row['record_id'], update_data)
+#             except Exception as e:
+#                 print(f"Failed to update record {row['record_id']}: {e}")
+
+#         return jsonify({"message": "Lead magnet data updated successfully."})
+
+#     except Exception as e:
+#         return jsonify({"error": f"Error updating lead magnet data: {str(e)}"}), 500
+
+
 
 
 
