@@ -8,7 +8,7 @@ from pyairtable import Table,Api
 import requests
 import openai
 import sys
-
+from data_collector import collect_information
 from data_sanitization import fetch_and_update_data, update_email_opens, collect_lead_magnet
 
 print(f"\n=============== Generate : Data Ingestion  ===============")
@@ -512,10 +512,14 @@ def update_email_opens_clicked():
 @app.route("/collect_lead_magnet", methods=["GET"])
 def collect_lead_magnet_details():
     try:
-        response = collect_lead_magnet()
+        user_id = request.args.get('user_id', default='', type=str)
+        if user_id:
+            response = collect_information(user_id)
+        else:
+            response = "Error occured while collecting lead magnet"
         return response
     except Exception as e:
-        execute_error_block(f"Error occured while counting collecting lead magnet {e}")
+        execute_error_block(f"Error occured while collecting lead magnet {e}")
 
 def test_run_pipeline(test_run_id,client_id):
     try:
