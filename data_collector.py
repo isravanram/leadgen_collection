@@ -16,7 +16,8 @@ AIRTABLE_RAW = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, SOURCE_TABLE)
 
 def fetch_user_details(user_table,user_id):
     records = user_table.all(formula=f"{{email}} = '{user_id}'")
-    # print(records)
+    print(f"user_id : {user_id}")
+    print(records)
     if records:
         return {
             "id": str(records[0]['fields']['id']),

@@ -513,6 +513,8 @@ def update_email_opens_clicked():
 def collect_lead_magnet_details():
     try:
         user_id = request.args.get('user_id', default='', type=str)
+        print(f"user_id : {user_id}")
+
         if user_id:
             response = collect_information(user_id)
         else:
