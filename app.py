@@ -8,7 +8,7 @@ from pyairtable import Table,Api
 import requests
 import openai
 import sys
-from data_collector import collect_information
+from lead_magnet_pdf_generation import generate_lead_magnet_pdf
 from data_sanitization import fetch_and_update_data, update_email_opens, collect_lead_magnet
 
 print(f"\n=============== Generate : Data Ingestion  ===============")
@@ -514,11 +514,10 @@ def collect_lead_magnet_details():
     try:
         user_id = request.args.get('user_id', default='', type=str)
         print(f"user_id : {user_id}")
-
         if user_id:
-            response = collect_information(user_id)
+            response = generate_lead_magnet_pdf(user_id)
         else:
-            response = "Error occured while collecting lead magnet"
+            response = "Please provide a valid user_id"
         return response
     except Exception as e:
         execute_error_block(f"Error occured while collecting lead magnet {e}")
